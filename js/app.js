@@ -184,10 +184,14 @@ const BUS_SVG = `<svg viewBox="0 0 24 24" width="18" height="18">
   <circle cx="17.5" cy="17" r="2.1" fill="#000"/>
 </svg>`;
 
-function busIcon() {
+// TfL's "outbound" for route 17 runs Archway -> London Bridge (southbound);
+// "inbound" runs the reverse, London Bridge -> Archway (northbound).
+const DIRECTION_LETTER = { outbound: 'S', inbound: 'N' };
+
+function busIcon(letter) {
   return L.divIcon({
     className: 'bus-icon-wrap',
-    html: `<div class="bus-icon">${BUS_SVG}</div>`,
+    html: `<div class="bus-icon">${BUS_SVG}<div class="bus-badge">${letter || '?'}</div></div>`,
     iconSize: [28, 28],
     iconAnchor: [14, 14],
   });
@@ -238,12 +242,17 @@ async function pollArrivals() {
     if (!loc) continue; // stop not on our matched route sequence (rare branch variant)
 
     const pos = estimatePosition(loc.direction, loc.index, next.timeToStation);
+    const letter = DIRECTION_LETTER[next.direction] || '?';
     seenVehicles.add(vehicleId);
 
     let marker = state.busMarkers.get(vehicleId);
     if (!marker) {
-      marker = L.marker([pos.lat, pos.lon], { icon: busIcon() }).addTo(state.map);
+      marker = L.marker([pos.lat, pos.lon], { icon: busIcon(letter) }).addTo(state.map);
+      marker._direction = letter;
       state.busMarkers.set(vehicleId, marker);
+    } else if (marker._direction !== letter) {
+      marker.setIcon(busIcon(letter));
+      marker._direction = letter;
     }
     marker.setLatLng([pos.lat, pos.lon]);
 
